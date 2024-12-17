@@ -1,41 +1,77 @@
 import express from "express";
+import User from "../models/User.js";
+
 const router = express.Router();
 
-const users = [
-  {
-    first_name: "Sandeela",
-    last_name: "Shameen",
-    email: "sasha@gmail.com",
-  },
-];
-
-router.get("/", (req, res) => {
-  res.send(users);
-});
-
-router.post("/", (req, res) => {
-  const newUser = req.body;
-  users.push(newUser);
-  res.send(newUser);
-});
-
-router.put("/:first_name", (req, res) => {
-  const updatedUser = users.find((tempUser) => tempUser.first_name === req.params.first_name);
-  if (updatedUser) {
-    updatedUser.email = req.body.email || "sashy@gmail.com";
-    res.send(updatedUser);
-  } else {
-    res.status(404).send("User not found");
+// read api
+router.get("/", async (req, res) => {
+  try {
+    const users = await User.find();
+    res.json(users);
+  } catch (error) {
+    res.status(500).send(`Error fetching users: ${error.message}`);
   }
 });
 
-router.delete("/:email", (req, res) => {
-  const index = users.findIndex((tempUser) => tempUser.email === req.params.email);
-  if (index !== -1) {
-    users.splice(index, 1);
-    res.send("User Deleted");
-  } else {
-    res.status(404).send("User not found");
+// create api
+router.post("/", async (req, res) => {
+  const { first_name, last_name, email, phone, age, gender } = req.body;
+
+  try {
+    const newUser = new User({
+      first_name,
+      last_name,
+      email,
+      phone,
+      age,
+      gender,
+    });
+
+    await newUser.save();
+    res.status(201).json(newUser);
+  } catch (error) {
+    res.status(400).send(`Error creating user: ${error.message}`);
+  }
+});
+
+// update api
+router.put("/:email", async (req, res) => {
+  const { first_name, last_name, phone, age, gender } = req.body;
+
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { email: req.params.email },
+      {
+        first_name,
+        last_name,
+        phone,
+        age,
+        gender,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).send("User not found");
+    }
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(400).send(`Error updating user: ${error.message}`);
+  }
+});
+
+// delete api
+router.delete("/:email", async (req, res) => {
+  try {
+    const deletedUser = await User.findOneAndDelete({
+      email: req.params.email,
+    });
+    if (!deletedUser) {
+      return res.status(404).send("User not found");
+    }
+    res.send("User Deleted Successfully");
+  } catch (error) {
+    res.status(400).send(`Error deleting user: ${error.message}`);
   }
 });
 
